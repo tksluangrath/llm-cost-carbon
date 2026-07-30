@@ -1,0 +1,55 @@
+{
+  "daily": [
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 130688,
+      "costUSD": 0.1099084,
+      "date": "2026-01-05",
+      "inputTokens": 20368,
+      "models": {
+        "gpt-5.2-codex": {
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 130688,
+          "inputTokens": 20368,
+          "isFallback": false,
+          "outputTokens": 3671,
+          "reasoningOutputTokens": 768,
+          "totalTokens": 154727
+        }
+      },
+      "outputTokens": 3671,
+      "reasoningOutputTokens": 768,
+      "totalTokens": 154727
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 39424,
+      "costUSD": 0.030191700000000002,
+      "date": "2026-01-08",
+      "inputTokens": 8430,
+      "models": {
+        "gpt-5.2-codex": {
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 39424,
+          "inputTokens": 8430,
+          "isFallback": false,
+          "outputTokens": 610,
+          "reasoningOutputTokens": 0,
+          "totalTokens": 48464
+        }
+      },
+      "outputTokens": 610,
+      "reasoningOutputTokens": 0,
+      "totalTokens": 48464
+    }
+  ],
+  "totals": {
+    "cacheCreationTokens": 0,
+    "cacheReadTokens": 170112,
+    "costUSD": 0.1401001,
+    "inputTokens": 28798,
+    "outputTokens": 4281,
+    "reasoningOutputTokens": 768,
+    "totalTokens": 203191
+  }
+}

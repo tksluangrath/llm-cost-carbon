@@ -1,0 +1,35 @@
+{
+  "_finding": "Scope reduction, 2026-07-29: params, params_provenance, precision, wh_per_1k_output_tokens, and gco2_per_1k_output_tokens are cut -- they existed only to support FLOP-based energy modeling, which is out of scope for the cost-only v1. Worth flagging rather than silently acting on: the ORIGINAL reason this table was restricted to 5 dense, published-parameter, open-weight models (Llama/Mistral/Qwen) was that closed models (Claude, GPT) don't have credible public parameter counts, which mattered only for FLOP math. That constraint is now moot for a pure pricing table -- a cost-only tool's model list should probably prioritize the models people actually ask about cost for (Claude, GPT included), not the models that happened to have public param counts. Not changed in this pass, since the instruction was to trim the existing 5, not silently swap the list -- flagged here as a named follow-up decision for the user before Step 2 resumes.",
+  "models": [
+    {
+      "model": "llama-3.1-8b",
+      "usd_price_per_million_output_tokens": 0.18,
+      "price_source": "Together.ai, https://www.together.ai/models/llama-3-1-8b, accessed 2026-07-29",
+      "last_verified": "2026-07-29"
+    },
+    {
+      "model": "llama-3.1-70b",
+      "usd_price_per_million_output_tokens": 0.88,
+      "price_source": "Together.ai, https://www.together.ai/models/llama-3-1-70b, accessed 2026-07-29",
+      "last_verified": "2026-07-29"
+    },
+    {
+      "model": "llama-3.1-405b",
+      "usd_price_per_million_output_tokens": 3.50,
+      "price_source": "Together.ai, https://www.together.ai/pricing, accessed 2026-07-29",
+      "last_verified": "2026-07-29"
+    },
+    {
+      "model": "mistral-7b-v0.3",
+      "usd_price_per_million_output_tokens": 0.20,
+      "price_source": "Fireworks.ai (blended in/out rate, not output-only), https://docs.fireworks.ai/serverless/pricing, accessed 2026-07-29",
+      "last_verified": "2026-07-29"
+    },
+    {
+      "model": "qwen2.5-72b",
+      "usd_price_per_million_output_tokens": 1.95,
+      "price_source": "Together.ai, https://www.together.ai/pricing, accessed 2026-07-29",
+      "last_verified": "2026-07-29"
+    }
+  ]
+}

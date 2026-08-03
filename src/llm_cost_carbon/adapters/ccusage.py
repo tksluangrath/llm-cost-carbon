@@ -3,9 +3,13 @@ list of UsageRecord, one per (date, model) pair -- a day's aggregate
 fields (totalCost, top-level inputTokens) are never parsed into a record,
 since they sum across models and don't belong to any single one.
 """
+import json
+import subprocess
 from dataclasses import dataclass
 from datetime import date as _date, timedelta
 from functools import partial
+
+from llm_cost_carbon.calc.constants import CCUSAGE_VERSION
 
 
 class AmbiguousCostAttributionError(ValueError):
@@ -105,3 +109,51 @@ parse_codex_daily = partial(_parse_dict_shaped_daily, source="codex")
 parse_opencode_daily = partial(_parse_dict_shaped_daily, source="opencode")
 parse_pi_daily = partial(_parse_dict_shaped_daily, source="pi")
 parse_amp_daily = partial(_parse_dict_shaped_daily, source="amp")
+
+
+def fetch_daily(source: str, version: str = CCUSAGE_VERSION, timeout: int = 60) -> dict:
+    """Subprocess wrapper around the pinned ccusage binary's `daily --json`
+    output. Raises on non-zero exit (CalledProcessError), invalid JSON
+    (JSONDecodeError), or a hung process (TimeoutExpired) -- doesn't catch
+    or degrade internally, since the caller (server.py's estimate()) is the
+    one that knows whether to fall through to the estimated path.
+    """
+    result = subprocess.run(
+        ["npx", "--yes", f"ccusage@{version}", source, "daily", "--json"],
+        shell=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+    if result.returncode != 0:
+        raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
+    return json.loads(result.stdout)
+
+
+def _select_window(records: list[UsageRecord], model: str, host: str, window: str) -> UsageRecord:
+    """Filters to the requested window, summing across days for "all".
+    Never returns None -- a captured result with no matching usage is a
+    legitimate zero-cost record, not an absence. Cache-token fields on the
+    returned record are irrelevant here (reconcile() never reads them) and
+    are set to None rather than aggregated."""
+    matches = [r for r in records if r.model == model]
+    if window != "all":
+        target_date = _date.today().isoformat() if window == "today" else window
+        matches = [r for r in matches if r.window_start.startswith(target_date)]
+
+    if not matches:
+        today = f"{_date.today().isoformat()}T00:00:00Z"
+        return UsageRecord(model=model, input_tokens=0, output_tokens=0,
+                            cache_creation_tokens=None, cache_read_tokens=None,
+                            usd_cost=0.0, source=host,
+                            window_start=today, window_end=today)
+    return UsageRecord(
+        model=model,
+        input_tokens=sum(r.input_tokens for r in matches),
+        output_tokens=sum(r.output_tokens for r in matches),
+        cache_creation_tokens=None, cache_read_tokens=None,
+        usd_cost=sum(r.usd_cost for r in matches),
+        source=host,
+        window_start=min(r.window_start for r in matches),
+        window_end=max(r.window_end for r in matches),
+    )

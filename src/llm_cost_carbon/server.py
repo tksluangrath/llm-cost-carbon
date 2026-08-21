@@ -5,7 +5,6 @@ Built against `mcp==2.0.0`'s installed API, which renamed the plan's
 tool registration, pydantic-validated request/response at the wire
 boundary), different class name. Flagged in the Step 3/4 status report.
 """
-import json
 from dataclasses import dataclass
 from datetime import date
 from subprocess import CalledProcessError, TimeoutExpired
@@ -116,7 +115,7 @@ def estimate(
             records = PARSERS[host](data)
             usage = _select_window(records, model, host, window)
             capture_status = "captured"  # zero matching rows -> captured, usd_cost 0, not an error
-        except (TimeoutExpired, json.JSONDecodeError, CalledProcessError, KeyError, ValueError) as e:
+        except (TimeoutExpired, CalledProcessError, KeyError, ValueError) as e:
             usage, capture_status, capture_reason = None, "unavailable", str(e)
 
     if capture_status != "captured" and (input_tokens is None or output_tokens is None):

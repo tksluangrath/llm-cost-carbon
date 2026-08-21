@@ -81,7 +81,7 @@ async def test_capture_failure_returns_valid_result_not_an_exception(monkeypatch
         )
     assert result.is_error is False
     assert result.structured_content["capture_status"] == "unavailable"
-    assert result.structured_content["capture_reason"] is not None
+    assert "timed out after 60 seconds" in result.structured_content["capture_reason"]
 
 
 @pytest.mark.anyio
@@ -112,7 +112,7 @@ async def test_ambiguous_multi_model_day_degrades_to_estimated_not_a_tool_error(
         )
     assert result.is_error is False
     assert result.structured_content["capture_status"] == "unavailable"
-    assert result.structured_content["capture_reason"] is not None
+    assert "cannot attribute per-model cost" in result.structured_content["capture_reason"]
     assert result.structured_content["source"] == "estimated"
 
 
@@ -135,7 +135,7 @@ async def test_missing_required_field_degrades_to_estimated_not_a_tool_error(mon
         )
     assert result.is_error is False
     assert result.structured_content["capture_status"] == "unavailable"
-    assert result.structured_content["capture_reason"] is not None
+    assert "inputTokens" in result.structured_content["capture_reason"]
     assert result.structured_content["source"] == "estimated"
 
 

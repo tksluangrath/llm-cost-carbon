@@ -40,8 +40,16 @@ print(estimate(model='llama-3.1-8b', input_tokens=1000, output_tokens=1000))
 To use it from Claude Code, register it as an MCP server:
 
 ```bash
-claude mcp add llm-cost-carbon -- uv run python -m llm_cost_carbon.server
+claude mcp add llm-cost-carbon -e PYTHONPATH=/path/to/llm-cost-carbon/src -- /path/to/llm-cost-carbon/.venv/bin/python3 -m llm_cost_carbon.server
 ```
+
+Replace `/path/to/llm-cost-carbon` with the absolute path to your clone
+(`pwd` from the repo root gives it to you). This form runs the venv's
+Python directly rather than going through `uv run` — `uv run` depends on an
+editable-install `.pth` file that `uv` writes as a hidden file on macOS,
+and Python 3.13's `site.py` skips hidden `.pth` files, so `uv run python -m
+llm_cost_carbon.server` fails with "Connection closed" when Claude Code
+tries to start it.
 
 ## Test
 

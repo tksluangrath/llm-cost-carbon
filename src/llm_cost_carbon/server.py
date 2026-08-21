@@ -11,6 +11,7 @@ from subprocess import CalledProcessError, TimeoutExpired
 
 from mcp.server.mcpserver import MCPServer
 
+from llm_cost_carbon import ledger
 from llm_cost_carbon.adapters import parser
 from llm_cost_carbon.adapters.parser import (
     _select_window,
@@ -62,6 +63,16 @@ class EstimateResult:
 @dataclass
 class ComparisonTable:
     results: list[EstimateResult]
+
+
+@dataclass
+class SummaryResult:
+    scope: str                    # "session" | "project"
+    total_usd: float
+    captured_usd: float
+    estimated_usd: float
+    call_count: int
+    date_range: tuple[str, str]
 
 
 def _to_estimate_result(result: ReconciledResult) -> EstimateResult:
@@ -122,6 +133,7 @@ def estimate(
         raise ValueError("input_tokens/output_tokens required when capture unavailable")
 
     result = reconcile(usage, model, input_tokens, output_tokens, capture_status, capture_reason)
+    ledger.append(tool="estimate", model=result.model, usd_cost=result.usd_cost, source=result.source)
     return _to_estimate_result(result)
 
 
@@ -133,7 +145,26 @@ def compare(models: list[str], input_tokens: int, output_tokens: int) -> Compari
         for m in models
     ]
     results.sort(key=lambda r: r.usd_cost)
+    # One ledger entry per compare() call, not per model -- it's one
+    # logical query even though it touches N models internally.
+    ledger.append(tool="compare", models_compared=models)
     return ComparisonTable(results=results)
+
+
+@mcp.tool()
+def ledger_summary(scope: str) -> SummaryResult:
+    """Cumulative spend totals from the local ledger. scope: 'session' (this
+    server process only) or 'project' (every entry ever recorded)."""
+    s = ledger.summarize(scope)
+    return SummaryResult(**s)
+
+
+@mcp.tool()
+def export_ledger(format: str = "json", since: str | None = None, until: str | None = None) -> str:
+    """Raw ledger entries for auditing/export, newest-first, capped at 1000
+    rows (truncated marker set if exceeded). `since` is inclusive, `until`
+    is exclusive -- both ISO-8601 timestamp strings."""
+    return ledger.export(format, since=since, until=until)
 
 
 if __name__ == "__main__":

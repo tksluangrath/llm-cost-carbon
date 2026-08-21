@@ -11,8 +11,8 @@ inference: "what did this cost in dollars" — reconciling real, captured
 usage (via the `ccusage` CLI) with manual token-count estimates, in one
 place. It ships as an MCP tool layer only: a local Python process, stdio
 transport, no proxy, no daemon, no paid APIs, no cloud infrastructure. An
-agent (e.g. Claude Code) calls tools (`list_models`, `estimate`, `compare`)
-on demand.
+agent (e.g. Claude Code) calls tools (`list_models`, `estimate`, `compare`,
+`ledger_summary`, `export_ledger`) on demand.
 
 v1 scope is cost-only — no carbon/energy modeling. See "A written finding"
 below for why.
@@ -62,6 +62,7 @@ uv run pytest
 - `src/llm_cost_carbon/adapters/` — normalizes ccusage output into usage records
 - `src/llm_cost_carbon/calc/` — pricing constants and cost calculations
 - `src/llm_cost_carbon/data/` — model pricing data
+- `src/llm_cost_carbon/ledger.py` — local append-only spend ledger (`~/.llm-cost-carbon/ledger.jsonl`)
 - `scripts/smoke_ccusage.py` — live smoke check against the real ccusage binary
 - `planning/` — design docs and revision history
 
@@ -77,10 +78,16 @@ output into one schema; it doesn't reimplement usage capture.
 
 - **Read locally:** only local `ccusage` session log files, via the pinned
   `ccusage` CLI — nothing else on disk is read.
+- **Write locally:** every `estimate()`/`compare()` call appends one line
+  to a local ledger at `~/.llm-cost-carbon/ledger.jsonl` (directory `0700`,
+  file `0600`) — model, cost, source, and timestamp only, nothing else.
+  This is what `ledger_summary`/`export_ledger` read back. Delete it
+  anytime with `rm -rf ~/.llm-cost-carbon/`; nothing depends on it existing.
 - **Network:** `npx ccusage@<pinned version>` performs an npm registry
   lookup on each invocation — a real network call, made only when
   `estimate()` is called with a `host` argument. Token-count-only estimates
-  make no network call at all.
+  make no network call at all. The ledger is local-only; nothing about it
+  ever goes over the network.
 - **Telemetry:** none. This project sends nothing anywhere.
 
 ## A written finding: why this is cost-only, not cost-and-carbon

@@ -13,11 +13,17 @@ from pathlib import Path
 import pytest
 from mcp.client import Client
 
-from llm_cost_carbon import server as server_module
+from llm_cost_carbon import ledger, server as server_module
 from llm_cost_carbon.adapters import parser
 from llm_cost_carbon.adapters.parser import _select_window, parse_claude_daily
 
 MODEL = "llama-3.1-8b"  # models.json: $0.18 / million output tokens
+
+
+@pytest.fixture(autouse=True)
+def _isolated_ledger(tmp_path, monkeypatch):
+    monkeypatch.setattr(ledger, "LEDGER_DIR", tmp_path / ".llm-cost-carbon")
+    monkeypatch.setattr(ledger, "LEDGER_PATH", tmp_path / ".llm-cost-carbon" / "ledger.jsonl")
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CLAUDE_FIXTURE = json.loads((FIXTURES / "ccusage_claude_daily.json").read_text())
@@ -65,6 +71,89 @@ async def test_compare_ranks_by_cost():
     assert result.is_error is False
     ranked = [r["model"] for r in result.structured_content["results"]]
     assert ranked == ["llama-3.1-8b", "llama-3.1-405b"]
+
+
+@pytest.mark.anyio
+async def test_estimate_writes_one_ledger_entry():
+    async with Client(server_module.mcp) as client:
+        await client.call_tool("estimate", {"model": MODEL, "input_tokens": 1000, "output_tokens": 1000})
+    entries = json.loads(ledger.export("json"))["entries"]
+    assert len(entries) == 1
+    assert entries[0]["model"] == MODEL
+    assert entries[0]["tool"] == "estimate"
+    assert entries[0]["source"] == "estimated"
+
+
+@pytest.mark.anyio
+async def test_compare_writes_one_ledger_entry_regardless_of_model_count():
+    """compare() is one logical query even though it touches N models
+    internally -- matches the ledger's original pre-cut design ("compare
+    writes 1 entry regardless of model count"). Splitting it into N
+    entries would make export_ledger's output look like N separate
+    actions that never happened, and would inflate ledger_summary()'s
+    totals for a single exploratory query."""
+    async with Client(server_module.mcp) as client:
+        await client.call_tool(
+            "compare",
+            {"models": ["llama-3.1-8b", "llama-3.1-70b", "llama-3.1-405b"], "input_tokens": 1000, "output_tokens": 1000},
+        )
+    entries = json.loads(ledger.export("json"))["entries"]
+    assert len(entries) == 1
+    assert entries[0]["tool"] == "compare"
+    assert entries[0]["models_compared"] == ["llama-3.1-8b", "llama-3.1-70b", "llama-3.1-405b"]
+    assert entries[0]["model"] is None
+    assert entries[0]["usd_cost"] is None  # no real spend occurred
+
+
+@pytest.mark.anyio
+async def test_compare_does_not_inflate_ledger_summary_totals():
+    async with Client(server_module.mcp) as client:
+        await client.call_tool("estimate", {"model": MODEL, "input_tokens": 1_000_000, "output_tokens": 1_000_000})
+        await client.call_tool(
+            "compare",
+            {"models": ["llama-3.1-8b", "llama-3.1-70b", "llama-3.1-405b"], "input_tokens": 1_000_000, "output_tokens": 1_000_000},
+        )
+        result = await client.call_tool("ledger_summary", {"scope": "session"})
+    assert result.is_error is False
+    # 1 estimate() call + 1 compare() call = 2 logical queries...
+    assert result.structured_content["call_count"] == 2
+    # ...but total_usd reflects only the single estimate() call's real
+    # cost -- compare()'s 3 hypothetical model costs are never summed in.
+    assert round(result.structured_content["total_usd"], 6) == 0.18
+
+
+@pytest.mark.anyio
+async def test_list_models_does_not_write_a_ledger_entry():
+    async with Client(server_module.mcp) as client:
+        await client.call_tool("list_models", {})
+    assert json.loads(ledger.export("json"))["entries"] == []
+
+
+@pytest.mark.anyio
+async def test_ledger_summary_round_trips_through_mcp_tool():
+    async with Client(server_module.mcp) as client:
+        await client.call_tool("estimate", {"model": MODEL, "input_tokens": 1_000_000, "output_tokens": 1_000_000})
+        result = await client.call_tool("ledger_summary", {"scope": "session"})
+    assert result.is_error is False
+    assert result.structured_content["call_count"] == 1
+    assert round(result.structured_content["total_usd"], 6) == 0.18
+    assert result.structured_content["estimated_usd"] == result.structured_content["total_usd"]
+    assert result.structured_content["captured_usd"] == 0
+
+
+@pytest.mark.anyio
+async def test_export_ledger_round_trips_through_mcp_tool():
+    async with Client(server_module.mcp) as client:
+        await client.call_tool("estimate", {"model": MODEL, "input_tokens": 1000, "output_tokens": 1000})
+        result = await client.call_tool("export_ledger", {"format": "json"})
+    assert result.is_error is False
+    # export_ledger returns a plain str, so the SDK wraps it as
+    # structured_content = {"result": "<json string>"} (non-object return
+    # values can't be structured content directly per the MCP spec).
+    parsed = json.loads(result.structured_content["result"])
+    assert parsed["truncated"] is False
+    assert len(parsed["entries"]) == 1
+    assert parsed["entries"][0]["model"] == MODEL
 
 
 @pytest.mark.anyio

@@ -85,6 +85,61 @@ async def test_capture_failure_returns_valid_result_not_an_exception(monkeypatch
 
 
 @pytest.mark.anyio
+async def test_ambiguous_multi_model_day_degrades_to_estimated_not_a_tool_error(monkeypatch):
+    """A real multi-model day for a dict-shaped source (codex/opencode/pi/
+    amp) raises AmbiguousCostAttributionError from the parser -- a genuine
+    parse-time capture failure, which the design says should degrade to
+    the estimated path (like a timeout or bad JSON), not surface as an
+    unhandled tool error."""
+    ambiguous_day = {
+        "daily": [
+            {
+                "date": "2026-01-05",
+                "costUSD": 1.0,
+                "models": {
+                    "gpt-5.2-codex": {"inputTokens": 1, "outputTokens": 1},
+                    "gpt-5.2-codex-mini": {"inputTokens": 1, "outputTokens": 1},
+                },
+            }
+        ]
+    }
+    monkeypatch.setattr(parser, "fetch_daily", lambda source, version=None, timeout=60: ambiguous_day)
+
+    async with Client(server_module.mcp) as client:
+        result = await client.call_tool(
+            "estimate",
+            {"model": MODEL, "host": "codex", "input_tokens": 10, "output_tokens": 20},
+        )
+    assert result.is_error is False
+    assert result.structured_content["capture_status"] == "unavailable"
+    assert result.structured_content["capture_reason"] is not None
+    assert result.structured_content["source"] == "estimated"
+
+
+@pytest.mark.anyio
+async def test_missing_required_field_degrades_to_estimated_not_a_tool_error(monkeypatch):
+    """A malformed/incomplete real response (missing a required field) is
+    also a parse-time capture failure per the same rule -- KeyError from
+    the parser must degrade, not crash the tool call."""
+    malformed_day = {
+        "daily": [
+            {"date": "2026-01-05", "modelBreakdowns": [{"modelName": "x"}]}  # missing required fields
+        ]
+    }
+    monkeypatch.setattr(parser, "fetch_daily", lambda source, version=None, timeout=60: malformed_day)
+
+    async with Client(server_module.mcp) as client:
+        result = await client.call_tool(
+            "estimate",
+            {"model": MODEL, "host": "claude", "input_tokens": 10, "output_tokens": 20},
+        )
+    assert result.is_error is False
+    assert result.structured_content["capture_status"] == "unavailable"
+    assert result.structured_content["capture_reason"] is not None
+    assert result.structured_content["source"] == "estimated"
+
+
+@pytest.mark.anyio
 async def test_unknown_model_becomes_tool_error_not_a_crash():
     async with Client(server_module.mcp) as client:
         result = await client.call_tool(

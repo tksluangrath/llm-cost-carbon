@@ -116,7 +116,7 @@ def estimate(
             records = PARSERS[host](data)
             usage = _select_window(records, model, host, window)
             capture_status = "captured"  # zero matching rows -> captured, usd_cost 0, not an error
-        except (TimeoutExpired, json.JSONDecodeError, CalledProcessError) as e:
+        except (TimeoutExpired, json.JSONDecodeError, CalledProcessError, KeyError, ValueError) as e:
             usage, capture_status, capture_reason = None, "unavailable", str(e)
 
     if capture_status != "captured" and (input_tokens is None or output_tokens is None):

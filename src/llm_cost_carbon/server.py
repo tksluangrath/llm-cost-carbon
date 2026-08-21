@@ -1,4 +1,5 @@
-"""MCP server (cost-only v1): registers list_models, estimate, compare.
+"""MCP server (cost-only v1): registers list_models, estimate, compare,
+ledger_summary, export_ledger.
 
 Built against `mcp==2.0.0`'s installed API, which renamed the plan's
 "FastMCP" to `mcp.server.mcpserver.MCPServer` -- same role (function ->

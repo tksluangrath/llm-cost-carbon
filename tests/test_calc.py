@@ -1,7 +1,7 @@
 """Step 3 verify: reconcile() unit tests, no I/O."""
 import pytest
 
-from llm_cost_carbon.adapters.ccusage import UsageRecord
+from llm_cost_carbon.adapters.parser import UsageRecord
 from llm_cost_carbon.calc.reconcile import ModelNotFoundError, reconcile
 
 MODEL = "llama-3.1-8b"  # models.json: $0.18 / million output tokens

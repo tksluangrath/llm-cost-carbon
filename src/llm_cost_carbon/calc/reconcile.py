@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
 
-from llm_cost_carbon.adapters.ccusage import UsageRecord
+from llm_cost_carbon.adapters.parser import UsageRecord
 from llm_cost_carbon.calc.constants import STALENESS_THRESHOLD_DAYS
 
 MODELS_PATH = Path(__file__).parent.parent / "data" / "models.json"

@@ -12,8 +12,8 @@ from subprocess import CalledProcessError, TimeoutExpired
 
 from mcp.server.mcpserver import MCPServer
 
-from llm_cost_carbon.adapters import ccusage
-from llm_cost_carbon.adapters.ccusage import (
+from llm_cost_carbon.adapters import parser
+from llm_cost_carbon.adapters.parser import (
     _select_window,
     parse_amp_daily,
     parse_claude_daily,
@@ -112,7 +112,7 @@ def estimate(
         capture_status, usage = "not_covered", None
     else:
         try:
-            data = ccusage.fetch_daily(host)
+            data = parser.fetch_daily(host)
             records = PARSERS[host](data)
             usage = _select_window(records, model, host, window)
             capture_status = "captured"  # zero matching rows -> captured, usd_cost 0, not an error

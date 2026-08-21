@@ -54,6 +54,12 @@
       "usd_price_per_million_output_tokens": 1.20,
       "price_source": "OpenAI, https://developers.openai.com/api/docs/pricing, accessed 2026-08-20 (standard-tier, short-context output price; long-context ~1.5x higher, Fast mode ~2x, Batch/Flex ~50% discount -- not modeled by this schema)",
       "last_verified": "2026-08-20"
+    },
+    {
+      "model": "gpt-5.2-codex",
+      "usd_price_per_million_output_tokens": 14.00,
+      "price_source": "OpenAI, https://developers.openai.com/api/docs/models/gpt-5.2-codex, accessed 2026-08-20",
+      "last_verified": "2026-08-20"
     }
   ]
 }

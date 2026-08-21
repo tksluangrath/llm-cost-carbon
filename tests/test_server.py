@@ -14,8 +14,8 @@ import pytest
 from mcp.client import Client
 
 from llm_cost_carbon import server as server_module
-from llm_cost_carbon.adapters import ccusage
-from llm_cost_carbon.adapters.ccusage import _select_window, parse_claude_daily
+from llm_cost_carbon.adapters import parser
+from llm_cost_carbon.adapters.parser import _select_window, parse_claude_daily
 
 MODEL = "llama-3.1-8b"  # models.json: $0.18 / million output tokens
 
@@ -24,7 +24,7 @@ CLAUDE_FIXTURE = json.loads((FIXTURES / "ccusage_claude_daily.json").read_text()
 
 
 class _FrozenDate(date):
-    """Stands in for `_date` in adapters.ccusage so "today" resolves to the
+    """Stands in for `_date` in adapters.parser so "today" resolves to the
     fixture's most recent day (2026-07-29) regardless of the real clock --
     `fromisoformat` still works normally since this subclasses `date`."""
 
@@ -72,7 +72,7 @@ async def test_capture_failure_returns_valid_result_not_an_exception(monkeypatch
     def raise_timeout(source, version=None, timeout=60):
         raise subprocess.TimeoutExpired(cmd=["npx", "ccusage"], timeout=60)
 
-    monkeypatch.setattr("llm_cost_carbon.adapters.ccusage.fetch_daily", raise_timeout)
+    monkeypatch.setattr("llm_cost_carbon.adapters.parser.fetch_daily", raise_timeout)
 
     async with Client(server_module.mcp) as client:
         result = await client.call_tool(
@@ -112,14 +112,14 @@ def anyio_backend():
 
 
 def test_window_today_selects_most_recent_day(monkeypatch):
-    monkeypatch.setattr(ccusage, "_date", _FrozenDate)
+    monkeypatch.setattr(parser, "_date", _FrozenDate)
     records = parse_claude_daily(CLAUDE_FIXTURE)
     result = _select_window(records, "claude-sonnet-5", "claude", "today")
     assert round(result.usd_cost, 6) == 20.798729
 
 
 def test_window_explicit_date_selects_that_day_not_today(monkeypatch):
-    monkeypatch.setattr(ccusage, "_date", _FrozenDate)
+    monkeypatch.setattr(parser, "_date", _FrozenDate)
     records = parse_claude_daily(CLAUDE_FIXTURE)
     result = _select_window(records, "claude-sonnet-5", "claude", "2026-07-09")
     assert round(result.usd_cost, 6) == 10.543412
@@ -133,8 +133,8 @@ def test_window_all_sums_every_matching_day():
 
 @pytest.mark.anyio
 async def test_zero_matching_rows_is_captured_zero_cost_not_estimated(monkeypatch):
-    monkeypatch.setattr(ccusage, "_date", _FrozenDate)
-    monkeypatch.setattr(ccusage, "fetch_daily", lambda source, version=None, timeout=60: CLAUDE_FIXTURE)
+    monkeypatch.setattr(parser, "_date", _FrozenDate)
+    monkeypatch.setattr(parser, "fetch_daily", lambda source, version=None, timeout=60: CLAUDE_FIXTURE)
 
     async with Client(server_module.mcp) as client:
         result = await client.call_tool(
@@ -151,7 +151,7 @@ async def test_invalid_window_raises_before_any_subprocess_call(monkeypatch):
     def fail_if_called(*a, **k):
         raise AssertionError("fetch_daily must not be called for an invalid window")
 
-    monkeypatch.setattr(ccusage, "fetch_daily", fail_if_called)
+    monkeypatch.setattr(parser, "fetch_daily", fail_if_called)
 
     async with Client(server_module.mcp) as client:
         result = await client.call_tool(

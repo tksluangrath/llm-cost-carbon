@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from llm_cost_carbon.adapters.ccusage import (
+from llm_cost_carbon.adapters.parser import (
     parse_amp_daily,
     parse_claude_daily,
     parse_codex_daily,

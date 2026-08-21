@@ -14,8 +14,8 @@ transport, no proxy, no daemon, no paid APIs, no cloud infrastructure. An
 agent (e.g. Claude Code) calls tools (`list_models`, `estimate`, `compare`,
 `ledger_summary`, `export_ledger`) on demand.
 
-v1 scope is cost-only — no carbon/energy modeling. See "A written finding"
-below for why.
+v1 scope is cost-only — no carbon/energy modeling. See "Why this is
+cost-only" below.
 
 ## Setup
 
@@ -45,17 +45,24 @@ claude mcp add llm-cost-carbon -e PYTHONPATH=/path/to/llm-cost-carbon/src -- /pa
 
 Replace `/path/to/llm-cost-carbon` with the absolute path to your clone
 (`pwd` from the repo root gives it to you). This form runs the venv's
-Python directly rather than going through `uv run` — `uv run` depends on an
+Python directly instead of going through `uv run`. `uv run` depends on an
 editable-install `.pth` file that `uv` writes as a hidden file on macOS,
 and Python 3.13's `site.py` skips hidden `.pth` files, so `uv run python -m
 llm_cost_carbon.server` fails with "Connection closed" when Claude Code
 tries to start it.
+
+If you're using Claude Code, `.claude/skills/llm-cost/SKILL.md` ships a
+`/llm-cost` skill that calls these tools directly in chat instead of
+answering pricing/spend questions from memory.
 
 ## Test
 
 ```bash
 uv run pytest
 ```
+
+CI (`.github/workflows/tests.yml`) runs the same suite via `uv` on every
+push and PR to `main`.
 
 ## Project layout
 
@@ -64,6 +71,7 @@ uv run pytest
 - `src/llm_cost_carbon/data/` — model pricing data
 - `src/llm_cost_carbon/ledger.py` — local append-only spend ledger (`~/.llm-cost-carbon/ledger.jsonl`)
 - `scripts/smoke_ccusage.py` — live smoke check against the real ccusage binary
+- `scripts/compare_test.sh` — live end-to-end check: drives a real `claude -p` session against all 5 MCP tools
 - `planning/` — design docs and revision history
 
 ## ccusage attribution
@@ -90,16 +98,12 @@ output into one schema; it doesn't reimplement usage capture.
   ever goes over the network.
 - **Telemetry:** none. This project sends nothing anywhere.
 
-## A written finding: why this is cost-only, not cost-and-carbon
+## Why this is cost-only, not cost-and-carbon
 
-The original scope for this project included carbon/energy modeling
-(FLOP-based Wh/gCO2 estimates on top of cost). That's cut from v1 — not
-because it stopped mattering, but because a physically-grounded carbon
-model needs credible public parameter counts, and the models people
-actually ask about cost for (closed models like Claude and GPT) don't
-publish those. Shipping a carbon estimate built on a guess would be worse
-than not shipping one. This is the same kind of scope discipline the
-project already applied once before, when the original model-table
-research was itself constrained to dense, published-parameter, open-weight
-models for exactly this reason — an honest narrowing of what can be
-claimed with a straight face, not a downgrade.
+The original scope included carbon/energy modeling: FLOP-based Wh/gCO2
+estimates layered on top of cost. It's cut from v1. A physically grounded
+carbon model needs public parameter counts, and the models people
+actually ask about cost for, closed ones like Claude and GPT, don't
+publish those. A carbon number built on a guessed parameter count would
+be worse than no carbon number at all, so it stays out until that
+changes.

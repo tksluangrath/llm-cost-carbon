@@ -1,9 +1,3 @@
----
-noteId: "98923ef08bc711f19bdefb1ef347bfc0"
-tags: []
-
----
-
 # llm-cost-carbon — Implementation Plan (Revised: Cost-Only v1)
 
 > **Revision note, 2026-07-29:** the original v1 scope (5 MCP tools, dual

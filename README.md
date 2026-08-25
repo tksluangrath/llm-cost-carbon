@@ -1,9 +1,3 @@
----
-noteId: "66a42bb08c3011f1918a15090ec10702"
-tags: []
-
----
-
 # llm-cost-carbon
 
 An MCP (Model Context Protocol) server that answers one question about LLM
